@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Robots World</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+</head>
+<body>
+<div class="container mt-5">
+    <h1>Robots World Dashboard</h1>
+
+    <h2>Add New Robot</h2>
+    <form id="addRobotForm">
+        <label for="newRobotId">Robot ID:</label>
+        <input type="text" id="newRobotId" name="robotId" required />
+        <button type="submit" class="btn btn-success">Add Robot</button>
+    </form>
+
+    <div class="card mt-3">
+        <div class="card-header">Logs</div>
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th scope="col">Timestamp</th>
+                <th scope="col">Message</th>
+            </tr>
+            </thead>
+            <tbody id="logsTableBody">
+            </tbody>
+        </table>
+    </div>
+
+    <h2>Add Task</h2>
+    <form id="taskForm">
+        <label for="taskRobotId">Select Robot:</label>
+        <select name="taskRobotId" id="taskRobotId">
+            <option value="all">All</option>
+        </select>
+
+        <label for="taskName">Task Name:</label>
+        <select name="taskName" id="taskName">
+            <option value="move">Move</option>
+            <option value="clean">Clean</option>
+            <option value="die">Die</option>
+        </select>
+        <button type="submit" class="btn btn-primary">Send Task</button>
+    </form>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
+
+<script>
+    // Add Robot
+    document.getElementById('addRobotForm').onsubmit = function(event) {
+        event.preventDefault();
+        const robotId = document.getElementById('newRobotId').value;
+
+        fetch('/api/robots/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ robotId: robotId }),
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Robot added successfully!');
+                document.getElementById('newRobotId').value = '';
+                updateRobots();
+            } else {
+                return response.text().then(errorMessage => alert('Error adding robot: ' + errorMessage));
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    };
+
+    // Assign Task
+    document.getElementById('taskForm').onsubmit = function(event) {
+        event.preventDefault();
+        const robotId = document.getElementById('taskRobotId').value;
+        const taskName = document.getElementById('taskName').value;
+
+        fetch(`/api/task/${robotId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(taskName),
+        })
+        .then(response => response.ok ? alert('Task assigned successfully!') : response.text().then(alert))
+        .catch(error => console.error('Error:', error));
+    };
+
+    // Load Robots
+    function updateRobots() {
+        fetch('/api/robots')
+            .then(response => response.json())
+            .then(data => {
+                const robotSelect = document.getElementById('taskRobotId');
+                robotSelect.innerHTML = '<option value="all">All</option>';
+                data.forEach(robot => {
+                    const option = document.createElement('option');
+                    option.value = robot;
+                    option.textContent = robot;
+                    robotSelect.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error fetching robots:', error));
+    }
+
+    // Load Logs
+    function updateLogs() {
+        fetch('/api/logs')
+            .then(response => response.json())
+            .then(data => {
+                const logsTableBody = document.getElementById('logsTableBody');
+                logsTableBody.innerHTML = '';
+                data.forEach(log => {
+                    const row = document.createElement('tr');
+                    const timestampCell = document.createElement('td');
+                    const messageCell = document.createElement('td');
+                    timestampCell.textContent = new Date(log.timestamp).toLocaleString();
+                    messageCell.textContent = log.message;
+                    row.appendChild(timestampCell);
+                    row.appendChild(messageCell);
+                    logsTableBody.appendChild(row);
+                });
+            })
+            .catch(error => console.error('Error fetching logs:', error));
+    }
+
+    // Initial load of robots and logs
+    updateRobots();
+    updateLogs();
+
+    // Auto-update logs and robots every 10 seconds
+    setInterval(() => {
+        updateLogs();
+        updateRobots();
+    }, 10000);
+</script>
+</body>
+</html>
